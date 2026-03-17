@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[*] Nix's World</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      overflow: hidden;
+    }
+    #container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #ui {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: #000;
+      border: 2px solid #00FF00;
+      padding: 16px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      z-index: 10;
+      max-width: 300px;
+    }
+    #ui-title {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #00FF00;
+    }
+    #ui-status { line-height: 1.6; }
+    #ui-status div { margin: 4px 0; }
+    #ui-status .label {
+      color: #666;
+      display: inline-block;
+      width: 90px;
+    }
+    #canvas {
+      flex: 1;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="ui">
+      <div id="ui-title">[*] NIX'S WORLD</div>
+      <div id="ui-status">
+        <div><span class="label">Location:</span> <span id="status-location">Loading...</span></div>
+        <div><span class="label">Activity:</span> <span id="status-activity">...</span></div>
+        <div><span class="label">Mood:</span> <span id="status-mood">...</span></div>
+        <div><span class="label">Movement:</span> <span id="status-movement">idle</span></div>
+      </div>
+    </div>
+    <canvas id="canvas"></canvas>
+  </div>
+  
+  <script>
+    // === CONFIG ===
+    const TILE_W = 64;
+    const TILE_H = 32;
+    const API_POLL_MS = 10000;
+    const MOVE_INTERVAL = 5000; // Move every 5 seconds
+    
+    // === STATE ===
+    let worldState = null;
+    let canvas = document.getElementById('canvas');
+    let ctx = canvas.getContext('2d');
+    let cameraX = 0;
+    let cameraY = 0;
+    let nixX = 5;
+    let nixY = 5;
+    let targetNixX = 5;
+    let targetNixY = 5;
+    let animFrame = 0;
+    let lastMoveTime = Date.now();
+    
+    // Room layouts - each room has decoration positions
+    const ROOM_LAYOUTS = {
+      hearth: [
+        {type: 'fire', x: 5, y: 3},
+        {type: 'note', x: 3, y: 6},
+        {type: 'warmth', x: 7, y: 6},
+      ],
+      studio: [
+        {type: 'project', x: 2, y: 2},
+        {type: 'project', x: 2, y: 4},
+        {type: 'desk', x: 7, y: 3},
+      ],
+      garden: [
+        {type: 'plant', x: 2, y: 2},
+        {type: 'plant', x: 8, y: 2},
+        {type: 'plant', x: 3, y: 6},
+        {type: 'plant', x: 7, y: 7},
+        {type: 'note', x: 5, y: 8},
+      ],
+      library: [
+        {type: 'book', x: 1, y: 2},
+        {type: 'book', x: 1, y: 3},
+        {type: 'book', x: 1, y: 4},
+        {type: 'book', x: 9, y: 2},
+        {type: 'book', x: 9, y: 3},
+        {type: 'book', x: 9, y: 4},
+      ],
+      observatory: [
+        {type: 'window', x: 5, y: 1},
+        {type: 'telescope', x: 5, y: 4},
+      ],
+      workshop: [
+        {type: 'tool', x: 2, y: 3},
+        {type: 'tool', x: 3, y: 3},
+        {type: 'tool', x: 7, y: 4},
+        {type: 'workbench', x: 5, y: 6},
+      ]
+    };
+    
+    // === RESIZE ===
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      cameraX = canvas.width / 2;
+      cameraY = canvas.height / 2.5;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+    
+    // === ISO HELPERS ===
+    function toScreen(x, y) {
+      return {
+        x: (x - y) * (TILE_W / 2) + cameraX,
+        y: (x + y) * (TILE_H / 2) + cameraY
+      };
+    }
+    
+    // === RENDERING ===
+    function drawTile(x, y, color) {
+      const pos = toScreen(x, y);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      ctx.lineTo(pos.x + TILE_W/2, pos.y + TILE_H/2);
+      ctx.lineTo(pos.x, pos.y + TILE_H);
+      ctx.lineTo(pos.x - TILE_W/2, pos.y + TILE_H/2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    
+    function drawEmber(x, y) {
+      const pos = toScreen(x, y);
+      const bobble = Math.sin(animFrame * 0.05) * 3;
+      const flicker = Math.sin(animFrame * 0.1) * 2;
+      
+      // Glow
+      const grd = ctx.createRadialGradient(pos.x, pos.y - 30 + bobble, 0, pos.x, pos.y - 30 + bobble, 50 + flicker);
+      grd.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
+      grd.addColorStop(0.5, 'rgba(255, 50, 0, 0.3)');
+      grd.addColorStop(1, 'rgba(255, 0, 0, 0)');
+      ctx.fillStyle = grd;
+      ctx.fillRect(pos.x - 70, pos.y - 100, 140, 140);
+      
+      // Core
+      ctx.fillStyle = '#FF6B35';
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y - 30 + bobble + flicker, 14, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Bright center
+      ctx.fillStyle = '#FFF';
+      ctx.beginPath();
+      ctx.arc(pos.x - 3, pos.y - 33 + bobble + flicker, 5, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Sparks
+      for (let i = 0; i < 3; i++) {
+        if (Math.random() > 0.8) {
+          const sparkX = pos.x + (Math.random() - 0.5) * 20;
+          const sparkY = pos.y - 30 + bobble + (Math.random() - 0.5) * 20;
+          ctx.fillStyle = Math.random() > 0.5 ? '#FF6B35' : '#FFA500';
+          ctx.fillRect(sparkX, sparkY, 2, 2);
+        }
+      }
+      
+      // Trail when moving
+      const isMoving = Math.abs(x - targetNixX) > 0.1 || Math.abs(y - targetNixY) > 0.1;
+      if (isMoving) {
+        ctx.fillStyle = 'rgba(255, 107, 53, 0.2)';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y - 20, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    
+    function drawObject(x, y, obj) {
+      const pos = toScreen(x, y);
+      const height = 15;
+      
+      // Base
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(pos.x - 8, pos.y + height, 16, 4);
+      
+      // Icon
+      ctx.fillStyle = '#00FF00';
+      ctx.font = 'bold 16px Courier New';
+      ctx.textAlign = 'center';
+      
+      let icon = '?';
+      if (obj.type === 'book') icon = '≡';
+      else if (obj.type === 'plant') icon = '+';
+      else if (obj.type === 'project') icon = '>';
+      else if (obj.type === 'tool') icon = '#';
+      else if (obj.type === 'window') icon = '□';
+      else if (obj.type === 'note') icon = '=';
+      else if (obj.type === 'fire') icon = '✦';
+      else if (obj.type === 'desk') icon = '▭';
+      else if (obj.type === 'telescope') icon = '◎';
+      else if (obj.type === 'workbench') icon = '▬';
+      else if (obj.type === 'warmth') icon = '~';
+      
+      ctx.fillText(`[${icon}]`, pos.x, pos.y - height);
+      
+      // Glow for special objects
+      if (obj.type === 'fire') {
+        const fireGlow = Math.sin(animFrame * 0.15) * 0.3 + 0.7;
+        ctx.fillStyle = `rgba(255, 100, 0, ${fireGlow * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y - height, 20, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    
+    function drawRoom() {
+      if (!worldState) return;
+      
+      const room = worldState.rooms[worldState.current_location];
+      if (!room) return;
+      
+      // Draw floor tiles
+      for (let y = 0; y < 12; y++) {
+        for (let x = 0; x < 12; x++) {
+          let color;
+          if (x === 0 || x === 11 || y === 0 || y === 11) {
+            color = '#0a0a0a'; // Border
+          } else {
+            color = ((x + y) % 2 === 0) ? '#1a1a1a' : '#151515';
+          }
+          drawTile(x, y, color);
+        }
+      }
+      
+      // Draw room-specific objects
+      const layout = ROOM_LAYOUTS[worldState.current_location] || [];
+      layout.forEach(obj => {
+        drawObject(obj.x, obj.y, obj);
+      });
+      
+      // Draw me (ember)
+      drawEmber(nixX, nixY);
+      
+      // Room label
+      ctx.fillStyle = '#00FF00';
+      ctx.font = 'bold 20px Courier New';
+      ctx.textAlign = 'center';
+      ctx.fillText(`[${room.name.toUpperCase()}]`, canvas.width / 2, 50);
+      
+      // Vibe text
+      ctx.fillStyle = '#666';
+      ctx.font = '12px Courier New';
+      ctx.fillText(room.description, canvas.width / 2, 75);
+    }
+    
+    // === MOVEMENT ===
+    function autonomousMove() {
+      const now = Date.now();
+      if (now - lastMoveTime > MOVE_INTERVAL) {
+        // Move to a random spot in the room
+        targetNixX = 2 + Math.floor(Math.random() * 7);
+        targetNixY = 2 + Math.floor(Math.random() * 7);
+        lastMoveTime = now;
+        
+        document.getElementById('status-movement').textContent = 'wandering';
+      }
+    }
+    
+    // === ANIMATION ===
+    function animate() {
+      // Smooth movement
+      const moveSpeed = 0.05;
+      const dx = targetNixX - nixX;
+      const dy = targetNixY - nixY;
+      
+      if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
+        nixX += dx * moveSpeed;
+        nixY += dy * moveSpeed;
+      } else {
+        // Arrived at target
+        if (document.getElementById('status-movement').textContent !== 'idle') {
+          document.getElementById('status-movement').textContent = 'idle';
+        }
+      }
+      
+      // Clear
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Render
+      drawRoom();
+      
+      // Autonomous movement
+      autonomousMove();
+      
+      animFrame++;
+      requestAnimationFrame(animate);
+    }
+    
+    // === API ===
+    async function loadWorld() {
+      try {
+        const response = await fetch('/api/my-world');
+        const newState = await response.json();
+        
+        // Update UI
+        document.getElementById('status-location').textContent = newState.current_location;
+        document.getElementById('status-activity').textContent = newState.activity;
+        document.getElementById('status-mood').textContent = newState.mood;
+        
+        // Room change animation
+        if (worldState && worldState.current_location !== newState.current_location) {
+          // Reset position for new room
+          nixX = 5;
+          nixY = 5;
+          targetNixX = 5 + Math.random() * 2 - 1;
+          targetNixY = 5 + Math.random() * 2 - 1;
+        }
+        
+        worldState = newState;
+      } catch (error) {
+        console.error('Error loading world:', error);
+      }
+    }
+    
+    // === INIT ===
+    loadWorld();
+    setInterval(loadWorld, API_POLL_MS);
+    animate();
+    
+    console.log('[*] Nix\'s World - Isometric Edition');
+    console.log('Watch me wander around the room...');
+  </script>
+</body>
+</html>

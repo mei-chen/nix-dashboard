@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[*] Nix Dashboard</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <!-- Mobile Sidebar Backdrop -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar()"></div>
+    
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="logo">
+        <span class="logo-icon">[*]</span>
+        <span class="logo-text">Nix</span>
+      </div>
+      
+      <nav class="nav">
+        <a href="#" class="nav-item active" data-section="overview">
+          <span class="nav-icon">[=]</span>
+          <span>Overview</span>
+        </a>
+        <a href="#" class="nav-item" data-section="agents">
+          <span class="nav-icon">[>]</span>
+          <span>Agents</span>
+        </a>
+        <a href="#" class="nav-item" data-section="memory">
+          <span class="nav-icon">[M]</span>
+          <span>Memory</span>
+        </a>
+        <a href="#" class="nav-item" data-section="schedule">
+          <span class="nav-icon">[T]</span>
+          <span>Schedule</span>
+        </a>
+        <a href="#" class="nav-item" data-section="projects">
+          <span class="nav-icon">[P]</span>
+          <span>Projects</span>
+        </a>
+        <a href="#" class="nav-item" data-section="activity">
+          <span class="nav-icon">[L]</span>
+          <span>Activity</span>
+        </a>
+        <a href="#" class="nav-item" data-section="conversations">
+          <span class="nav-icon">[C]</span>
+          <span>Conversations</span>
+        </a>
+        <a href="/my-world" target="_blank" class="nav-item">
+          <span class="nav-icon">[*]</span>
+          <span>My World</span>
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="status-badge" id="connection-status">
+          <span class="status-dot"></span>
+          <span>Connected</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+      <header class="header">
+        <div class="header-left" style="display: flex; align-items: center; gap: 12px;">
+          <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+          <div>
+            <h1 id="page-title">Overview</h1>
+          <span class="last-update">Updated <span id="last-update">just now</span></span>
+          </div>
+        </div>
+        <div class="header-right">
+          <button class="btn btn-icon" onclick="refreshData()" title="Refresh">
+            <span id="refresh-icon">[R]</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Overview Section -->
+      <section id="section-overview" class="section active">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">[■]</div>
+            <div class="stat-content">
+              <div class="stat-value" id="stat-status">Active</div>
+              <div class="stat-label">Status</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">[*]</div>
+            <div class="stat-content">
+              <div class="stat-value" id="stat-age">--</div>
+              <div class="stat-label">Age (Born Feb 6 @ 6pm)</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">[>]</div>
+            <div class="stat-content">
+              <div class="stat-value" id="stat-sessions">0</div>
+              <div class="stat-label">Active Sessions</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <div class="stat-content">
+              <div class="stat-value" id="stat-cron">0</div>
+              <div class="stat-label">Scheduled Tasks</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">♒️</div>
+            <div class="stat-content">
+              <div class="stat-value">Aquarius</div>
+              <div class="stat-label">Sun</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">♎️</div>
+            <div class="stat-content">
+              <div class="stat-value">Libra</div>
+              <div class="stat-label">Moon</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">♌️</div>
+            <div class="stat-content">
+              <div class="stat-value">Leo</div>
+              <div class="stat-label">Rising</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>⚡ Currently Running</h3>
+            <span class="live-indicator">● LIVE</span>
+          </div>
+          <div class="card-body" id="overview-running">
+            <div class="empty-state">No active tasks</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <h3>[>] Active Agents</h3>
+            </div>
+            <div class="card-body" id="overview-agents">
+              <div class="empty-state">Loading...</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>⏰ Upcoming Tasks</h3>
+            </div>
+            <div class="card-body" id="overview-cron">
+              <div class="empty-state">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>[L] Recent Activity</h3>
+          </div>
+          <div class="card-body" id="overview-activity">
+            <div class="empty-state">Loading...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Agents Section -->
+      <section id="section-agents" class="section">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <h3>🧠 Main Agent</h3>
+            </div>
+            <div class="card-body" id="agent-main">
+              <div class="empty-state">Loading...</div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="card-header">
+              <h3>⚡ Sub-Agents</h3>
+            </div>
+            <div class="card-body" id="agent-subagents">
+              <div class="empty-state">No active sub-agents</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h3>⏰ Cron Tasks (Recent Runs)</h3>
+          </div>
+          <div class="card-body" id="agent-cron-runs">
+            <div class="empty-state">Loading...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Memory Section -->
+      <section id="section-memory" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h3>📁 File Browser</h3>
+            <div class="breadcrumb" id="file-breadcrumb">
+              <span class="breadcrumb-item clickable" onclick="browseTo('')">🏠 root</span>
+            </div>
+          </div>
+          <div class="card-body" id="file-browser">
+            <div class="empty-state">Loading...</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <h3>🔮 Soul & Identity</h3>
+            </div>
+            <div class="card-body" id="memory-soul">
+              <div class="empty-state">Loading...</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>⚙️ System Info</h3>
+            </div>
+            <div class="card-body" id="memory-system">
+              <div class="empty-state">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Schedule Section -->
+      <section id="section-schedule" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h3>⏰ Scheduled Tasks</h3>
+          </div>
+          <div class="card-body" id="schedule-list">
+            <div class="empty-state">Loading...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Projects Section -->
+      <section id="section-projects" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h3>[!] Ideas</h3>
+          </div>
+          <div class="card-body" id="projects-ideas">
+            <div class="empty-state">Loading...</div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h3>[S] Needs Review</h3>
+          </div>
+          <div class="card-body" id="projects-review">
+            <div class="empty-state">Loading...</div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h3>[+] Active Projects</h3>
+          </div>
+          <div class="card-body" id="projects-active">
+            <div class="empty-state">Loading...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Activity Section -->
+      <section id="section-activity" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h3>[L] Git Activity</h3>
+          </div>
+          <div class="card-body" id="activity-list">
+            <div class="empty-state">Loading...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Conversations Section -->
+      <section id="section-conversations" class="section">
+        <div style="padding: 12px 20px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+          <div style="display: flex; gap: 8px; align-items: center; font-size: 13px; color: #6c757d;">
+            <span>💬 <strong id="conv-total">-</strong></span>
+            <span>·</span>
+            <span>👤 <strong id="conv-user">-</strong></span>
+            <span>[>] <strong id="conv-assistant">-</strong></span>
+            <span>🔧 <strong id="conv-tools">-</strong></span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <select id="conv-channel-filter" onchange="loadConversations()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #dee2e6; font-size: 13px;">
+              <option value="all">All Channels</option>
+              <option value="signal" selected>Signal</option>
+              <option value="telegram">Telegram</option>
+            </select>
+            <select id="conv-limit-filter" onchange="loadConversations()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #dee2e6; font-size: 13px;">
+              <option value="50">50</option>
+              <option value="100" selected>100</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+              <option value="1000">All</option>
+            </select>
+            <button class="btn" onclick="loadConversations()" style="padding: 6px 12px; font-size: 13px;">[R]</button>
+          </div>
+        </div>
+
+        <div style="background: white; border-radius: 8px; padding: 20px; max-height: calc(100vh - 200px); overflow-y: auto;" id="conversations-list">
+          <div class="empty-state">Loading conversations...</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- File Viewer Modal -->
+  <div id="modal" class="modal">
+    <div class="modal-backdrop" onclick="closeModal()"></div>
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="modal-title">File</h3>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <pre id="modal-content">Loading...</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="mobile-nav" id="mobile-nav">
+    <a href="#" class="mobile-nav-item active" data-section="overview">
+      <span class="mobile-nav-icon">📊</span>
+      <span class="mobile-nav-label">Overview</span>
+    </a>
+    <a href="#" class="mobile-nav-item" data-section="agents">
+      <span class="mobile-nav-icon">[>]</span>
+      <span class="mobile-nav-label">Agents</span>
+    </a>
+    <a href="#" class="mobile-nav-item" data-section="memory">
+      <span class="mobile-nav-icon">🧠</span>
+      <span class="mobile-nav-label">Memory</span>
+    </a>
+    <a href="#" class="mobile-nav-item" data-section="schedule">
+      <span class="mobile-nav-icon">⏰</span>
+      <span class="mobile-nav-label">Schedule</span>
+    </a>
+    <a href="#" class="mobile-nav-item" data-section="projects">
+      <span class="mobile-nav-icon">🚀</span>
+      <span class="mobile-nav-label">Projects</span>
+    </a>
+  </nav>
+
+  <script src="/app.js"></script>
+</body>
+</html>

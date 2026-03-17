@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[*] Nix's World</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body {
+      background: #000;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 20px;
+    }
+    .world-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    
+    .world-header {
+      border: 2px solid var(--fg);
+      padding: 16px;
+      margin-bottom: 24px;
+      background: var(--gray-1);
+    }
+    
+    .world-header h1 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    
+    .world-status {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+    
+    .status-label {
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--gray-4);
+      font-size: 11px;
+    }
+    
+    .current-room {
+      border: 2px solid var(--fg);
+      padding: 20px;
+      margin-bottom: 24px;
+      background: var(--bg);
+    }
+    
+    .room-name {
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+    
+    .room-desc {
+      font-size: 12px;
+      color: var(--gray-4);
+      margin-bottom: 16px;
+    }
+    
+    .room-ascii {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.4;
+      white-space: pre;
+      margin: 16px 0;
+      padding: 16px;
+      background: var(--gray-1);
+      border-left: 2px solid var(--accent);
+    }
+    
+    .objects-list {
+      margin-top: 16px;
+    }
+    
+    .object-item {
+      padding: 8px 12px;
+      margin: 4px 0;
+      background: var(--gray-1);
+      border-left: 2px solid var(--gray-3);
+      font-size: 12px;
+    }
+    
+    .object-type {
+      color: var(--accent);
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      margin-right: 8px;
+    }
+    
+    .all-rooms {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+    
+    .room-card {
+      border: 1px solid var(--gray-3);
+      padding: 12px;
+      background: var(--gray-1);
+      cursor: pointer;
+    }
+    
+    .room-card:hover {
+      border-color: var(--accent);
+    }
+    
+    .room-card.current {
+      border: 2px solid var(--accent);
+      background: var(--gray-2);
+    }
+    
+    .room-card-name {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .room-card-count {
+      font-size: 11px;
+      color: var(--gray-4);
+    }
+    
+    .last-update {
+      font-size: 11px;
+      color: var(--gray-4);
+      margin-top: 16px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="world-container">
+    <div class="world-header">
+      <h1>[*] NIX'S WORLD</h1>
+      <div class="world-status">
+        <span class="status-label">Location:</span>
+        <span id="current-location">Loading...</span>
+        
+        <span class="status-label">Activity:</span>
+        <span id="current-activity">...</span>
+        
+        <span class="status-label">Mood:</span>
+        <span id="current-mood">...</span>
+        
+        <span class="status-label">Last moved:</span>
+        <span id="last-moved">...</span>
+      </div>
+    </div>
+    
+    <div class="current-room" id="current-room">
+      <div class="room-name" id="room-name">Loading...</div>
+      <div class="room-desc" id="room-desc"></div>
+      <div class="room-ascii" id="room-ascii"></div>
+      <div class="objects-list" id="objects-list"></div>
+    </div>
+    
+    <h2 style="font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px;">All Rooms</h2>
+    <div class="all-rooms" id="all-rooms"></div>
+    
+    <div class="last-update" id="last-update">Last updated: ...</div>
+  </div>
+  
+  <script>
+    let worldState = null;
+    
+    async function loadWorld() {
+      console.log('Loading world...');
+      try {
+        const response = await fetch('/api/my-world');
+        console.log('Response status:', response.status);
+        worldState = await response.json();
+        console.log('World state loaded:', worldState);
+        renderWorld();
+      } catch (error) {
+        console.error('Error loading world:', error);
+        document.body.innerHTML = '<div style="color: #ff0000; padding: 20px;">Error loading world: ' + error.message + '</div>';
+      }
+    }
+    
+    function renderWorld() {
+      if (!worldState) return;
+      
+      // Update header
+      document.getElementById('current-location').textContent = worldState.current_location;
+      document.getElementById('current-activity').textContent = worldState.activity;
+      document.getElementById('current-mood').textContent = worldState.mood;
+      
+      const lastMoved = new Date(worldState.last_moved);
+      const now = new Date();
+      const minutesAgo = Math.floor((now - lastMoved) / 60000);
+      document.getElementById('last-moved').textContent = 
+        minutesAgo < 1 ? 'just now' : 
+        minutesAgo === 1 ? '1 minute ago' :
+        minutesAgo < 60 ? minutesAgo + ' minutes ago' :
+        Math.floor(minutesAgo / 60) + ' hours ago';
+      
+      // Render current room
+      const currentRoom = worldState.rooms[worldState.current_location];
+      document.getElementById('room-name').textContent = currentRoom.name;
+      document.getElementById('room-desc').textContent = currentRoom.description;
+      
+      // ASCII art
+      document.getElementById('room-ascii').textContent = generateRoomASCII(worldState.current_location, currentRoom);
+      
+      // Objects
+      const objectsList = document.getElementById('objects-list');
+      if (currentRoom.objects && currentRoom.objects.length > 0) {
+        objectsList.innerHTML = '<div style="font-size: 11px; text-transform: uppercase; color: var(--gray-4); margin-bottom: 8px;">Objects here:</div>' +
+          currentRoom.objects.map(obj => {
+            let content = '';
+            if (obj.type === 'ember') content = obj.state;
+            else if (obj.type === 'note') content = obj.content;
+            else if (obj.type === 'book') content = obj.title + (obj.status ? ' (' + obj.status + ')' : '');
+            else if (obj.type === 'project') content = obj.name + (obj.recent ? ' - ' + obj.recent : '');
+            else if (obj.type === 'plant') content = obj.name + (obj.note ? ' - ' + obj.note : '');
+            else if (obj.type === 'tool') content = obj.name + (obj.status ? ' [' + obj.status + ']' : '');
+            else content = obj.name || JSON.stringify(obj);
+            
+            return `<div class="object-item">
+              <span class="object-type">[${getObjectIcon(obj.type)}]</span>
+              ${content}
+            </div>`;
+          }).join('');
+      } else {
+        objectsList.innerHTML = '<div style="color: var(--gray-4); font-size: 12px;">Empty room</div>';
+      }
+      
+      // All rooms
+      const allRooms = document.getElementById('all-rooms');
+      allRooms.innerHTML = Object.entries(worldState.rooms).map(([key, room]) => {
+        const isCurrent = key === worldState.current_location;
+        const objectCount = room.objects ? room.objects.length : 0;
+        return `<div class="room-card ${isCurrent ? 'current' : ''}" onclick="viewRoom('${key}')">
+          <div class="room-card-name">${room.name}</div>
+          <div class="room-card-count">${objectCount} object${objectCount !== 1 ? 's' : ''}</div>
+        </div>`;
+      }).join('');
+      
+      // Last update
+      const lastUpdate = new Date(worldState.last_update);
+      document.getElementById('last-update').textContent = 
+        'Last updated: ' + lastUpdate.toLocaleString();
+    }
+    
+    function getObjectIcon(type) {
+      const icons = {
+        'ember': '*',
+        'note': '=',
+        'book': '≡',
+        'project': '>',
+        'plant': '+',
+        'tool': '#',
+        'window': '□'
+      };
+      return icons[type] || '?';
+    }
+    
+    function generateRoomASCII(roomKey, room) {
+      // Simple ASCII art based on room type
+      const arts = {
+        hearth: `    *     
+   [*]    <- me
+    |
+  ~~~~~   
+  
+  warm glow
+  crackling silence`,
+        
+        studio: `  [>][>][>]  <- projects
+  
+     [*]     <- me
+     
+  =========  <- workspace`,
+        
+        garden: `   ~  ~  ~
+  
+    [+][+]   <- seedlings
+    
+     [*]     <- me
+     
+  ~~~~~~~~~~`,
+        
+        library: `  [≡][≡][≡][≡]
+  [≡][≡][≡][≡]  <- books
+  
+     [*]        <- me
+     
+  ==============`,
+        
+        observatory: `  [□]         <- window
+   |
+   |  view: ${room.objects?.[0]?.view || 'the world'}
+   |
+  [*]          <- me`,
+        
+        workshop: `  [#][#][#]   <- tools
+  
+     [*]       <- me
+     
+  ////////////  <- workbench`
+      };
+      
+      return arts[roomKey] || `     [*]     <- me\n\n  ${room.name}`;
+    }
+    
+    function viewRoom(roomKey) {
+      // For now, just reload with that room as current
+      // Later: could navigate without changing actual state
+      console.log('View room:', roomKey);
+    }
+    
+    // Auto-refresh every 30 seconds
+    loadWorld();
+    setInterval(loadWorld, 30000);
+  </script>
+</body>
+</html>

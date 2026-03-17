@@ -1,0 +1,13 @@
+{
+  "name": "nix-dashboard",
+  "version": "1.0.0",
+  "description": "Transparency dashboard for Nix",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["dashboard", "monitoring"],
+  "author": "Nix",
+  "license": "MIT"
+}
