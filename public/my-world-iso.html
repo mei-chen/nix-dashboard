@@ -124,12 +124,12 @@
     var POLL_MS = 10000;
 
     var ROOMS = {
-      observatory: { x: 500, y: 80,  name: 'Observatory', floor: '#08081a', accent: '#7755dd', wall: '#2a1a4a' },
-      library:     { x: 160, y: 300, name: 'Library',     floor: '#100c06', accent: '#cc9944', wall: '#3a2a1a' },
-      hearth:      { x: 500, y: 300, name: 'Hearth',      floor: '#140a02', accent: '#ff6b35', wall: '#3a1a0a' },
-      studio:      { x: 840, y: 300, name: 'Studio',      floor: '#06081a', accent: '#4488ff', wall: '#1a2a4a' },
-      garden:      { x: 500, y: 520, name: 'Garden',      floor: '#061206', accent: '#44cc44', wall: '#1a3a1a' },
-      workshop:    { x: 840, y: 520, name: 'Workshop',    floor: '#0c0c0c', accent: '#999999', wall: '#2a2a2a' },
+      observatory: { x: 500, y: 80,  name: 'Observatory', floor: '#12122e', accent: '#7755dd', wall: '#4a3a7a' },
+      library:     { x: 160, y: 300, name: 'Library',     floor: '#1e1810', accent: '#cc9944', wall: '#5a4a2a' },
+      hearth:      { x: 500, y: 300, name: 'Hearth',      floor: '#221408', accent: '#ff6b35', wall: '#5a3018' },
+      studio:      { x: 840, y: 300, name: 'Studio',      floor: '#0e1228', accent: '#4488ff', wall: '#2a3a6a' },
+      garden:      { x: 500, y: 520, name: 'Garden',      floor: '#0e1e0e', accent: '#44cc44', wall: '#2a5a2a' },
+      workshop:    { x: 840, y: 520, name: 'Workshop',    floor: '#181818', accent: '#999999', wall: '#484848' },
     };
 
     var CORRIDORS = [
@@ -159,7 +159,23 @@
     // State
     // -----------------------------------------------------------------------
 
-    var world = null;
+    var DEFAULT_WORLD = {
+      current_location: 'hearth',
+      activity: 'resting',
+      mood: 'contemplative',
+      last_moved: new Date().toISOString(),
+      last_update: new Date().toISOString(),
+      rooms: {
+        hearth:      { name: 'The Hearth',      description: 'A warm center. The ember glows here.', objects: [{ type: 'fire' }, { type: 'warmth' }, { type: 'note' }] },
+        library:     { name: 'The Library',      description: 'Shelves of accumulated knowledge.',      objects: [{ type: 'book' }, { type: 'book' }, { type: 'book' }] },
+        studio:      { name: 'The Studio',       description: 'Where ideas become projects.',           objects: [{ type: 'project' }, { type: 'desk' }] },
+        observatory: { name: 'The Observatory',  description: 'A quiet place to watch the world.',      objects: [{ type: 'window' }, { type: 'telescope' }] },
+        garden:      { name: 'The Garden',       description: 'Things grow slowly here.',                objects: [{ type: 'plant' }, { type: 'plant' }] },
+        workshop:    { name: 'The Workshop',     description: 'Tools and experiments.',                  objects: [{ type: 'tool' }, { type: 'workbench' }] },
+      },
+    };
+
+    var world = DEFAULT_WORLD;
     var canvas = document.getElementById('canvas');
     var ctx = canvas.getContext('2d');
     var camX = 0, camY = 0, tCamX = 0, tCamY = 0;
@@ -179,7 +195,10 @@
     }
     window.addEventListener('resize', resize);
     resize();
-    panTo(500, 300);
+
+    // Snap camera immediately (no easing from origin)
+    tCamX = camX = canvas.width / 2 - 500;
+    tCamY = camY = canvas.height / 2 - 300;
 
     // -----------------------------------------------------------------------
     // Camera
@@ -215,8 +234,8 @@
     function drawGlows() {
       for (var key in ROOMS) {
         var r = ROOMS[key];
-        var radius = isCurrent(key) ? RW * 1.1 : RW * 0.7;
-        var alpha = isCurrent(key) ? 0.18 : 0.06;
+        var radius = isCurrent(key) ? RW * 1.2 : RW * 0.85;
+        var alpha = isCurrent(key) ? 0.25 : 0.14;
         var grd = ctx.createRadialGradient(
           r.x + camX, r.y + camY, 20,
           r.x + camX, r.y + camY, radius
@@ -240,7 +259,7 @@
     }
 
     function drawCorridors() {
-      ctx.fillStyle = '#080808';
+      ctx.fillStyle = '#161616';
       CORRIDORS.forEach(function (c) {
         var a = ROOMS[c[0]], b = ROOMS[c[1]];
         if (c[2] === 'h') {
@@ -270,8 +289,8 @@
         ctx.fillStyle = r.floor;
         ctx.fillRect(sx, sy, b.w, b.h);
 
-        // Subtle grid
-        ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+        // Floor grid
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
         ctx.lineWidth = 1;
         for (var gx = GRID; gx < b.w; gx += GRID) {
           ctx.beginPath(); ctx.moveTo(sx + gx, sy); ctx.lineTo(sx + gx, sy + b.h); ctx.stroke();
@@ -281,14 +300,14 @@
         }
 
         // Walls
-        ctx.strokeStyle = sel || cur ? r.accent : hov ? '#444' : r.wall;
+        ctx.strokeStyle = sel || cur ? r.accent : hov ? '#666' : r.wall;
         ctx.lineWidth = WALL;
         ctx.strokeRect(sx, sy, b.w, b.h);
 
         // Label
         ctx.font = 'bold 11px Courier New';
         ctx.textAlign = 'center';
-        ctx.fillStyle = cur ? r.accent : '#3a3a3a';
+        ctx.fillStyle = cur ? r.accent : '#777';
         ctx.fillText(r.name.toUpperCase(), r.x + camX, sy - 10);
 
         if (cur) {
@@ -394,20 +413,20 @@
 
     function doParticles() {
       // Ambient room particles
-      if (world && Math.random() > 0.88) {
+      if (Math.random() > 0.88) {
         for (var key in ROOMS) {
           if (Math.random() > 0.4) continue;
           var b = rr(key);
           var cur = isCurrent(key);
           var col, sz;
 
-          if (key === 'hearth' && cur)       { col = 'rgba(255,107,53,0.35)'; sz = 1.8; }
-          else if (key === 'hearth')         { col = 'rgba(255,107,53,0.15)'; sz = 1; }
-          else if (key === 'garden')         { col = 'rgba(68,204,68,0.25)'; sz = 1.2; }
-          else if (key === 'observatory')    { col = 'rgba(119,85,221,0.35)'; sz = 0.8; }
-          else if (key === 'library')        { col = 'rgba(204,153,68,0.15)'; sz = 0.8; }
-          else if (key === 'studio' && cur)  { col = 'rgba(68,136,255,0.25)'; sz = 1; }
-          else if (key === 'workshop' && cur){ col = 'rgba(170,170,170,0.15)'; sz = 1; }
+          if (key === 'hearth' && cur)       { col = 'rgba(255,107,53,0.45)'; sz = 2; }
+          else if (key === 'hearth')         { col = 'rgba(255,107,53,0.25)'; sz = 1.2; }
+          else if (key === 'garden')         { col = 'rgba(68,204,68,0.35)'; sz = 1.4; }
+          else if (key === 'observatory')    { col = 'rgba(119,85,221,0.40)'; sz = 1; }
+          else if (key === 'library')        { col = 'rgba(204,153,68,0.25)'; sz = 1; }
+          else if (key === 'studio')         { col = 'rgba(68,136,255,0.25)'; sz = 1; }
+          else if (key === 'workshop')       { col = 'rgba(170,170,170,0.20)'; sz = 1; }
           else continue;
 
           parts.push({
@@ -546,7 +565,14 @@
           if (selected) showDetail(selected);
         })
         .catch(function () {
-          document.getElementById('s-loc').textContent = 'offline';
+          if (!world || world === DEFAULT_WORLD) {
+            world = DEFAULT_WORLD;
+            document.getElementById('s-loc').textContent = DEFAULT_WORLD.current_location;
+            document.getElementById('s-act').textContent = DEFAULT_WORLD.activity;
+            document.getElementById('s-mood').textContent = DEFAULT_WORLD.mood;
+            document.getElementById('s-moved').textContent = 'just now';
+            placeNix();
+          }
         });
     }
 
@@ -571,7 +597,13 @@
       requestAnimationFrame(loop);
     }
 
-    panTo(500, 300);
+    // Initialize from default state immediately
+    placeNix();
+    document.getElementById('s-loc').textContent = DEFAULT_WORLD.current_location;
+    document.getElementById('s-act').textContent = DEFAULT_WORLD.activity;
+    document.getElementById('s-mood').textContent = DEFAULT_WORLD.mood;
+    document.getElementById('s-moved').textContent = 'just now';
+
     loadWorld();
     setInterval(loadWorld, POLL_MS);
     loop();
