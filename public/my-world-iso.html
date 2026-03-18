@@ -8,355 +8,574 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: #000;
-      color: #fff;
-      font-family: 'Courier New', monospace;
       overflow: hidden;
+      font-family: 'Courier New', monospace;
+      color: #fff;
     }
-    #container {
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    #ui {
-      position: absolute;
+    canvas { display: block; }
+
+    #panel {
+      position: fixed;
       top: 20px;
       left: 20px;
-      background: #000;
+      background: rgba(0, 0, 0, 0.88);
       border: 2px solid #00FF00;
-      padding: 16px;
+      padding: 16px 20px;
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       z-index: 10;
-      max-width: 300px;
+      min-width: 220px;
     }
-    #ui-title {
+    #panel-title {
       font-size: 14px;
       font-weight: bold;
-      margin-bottom: 8px;
       color: #00FF00;
+      margin-bottom: 12px;
+      letter-spacing: 0.1em;
     }
-    #ui-status { line-height: 1.6; }
-    #ui-status div { margin: 4px 0; }
-    #ui-status .label {
-      color: #666;
-      display: inline-block;
-      width: 90px;
+    .p-row { display: flex; gap: 10px; margin: 5px 0; line-height: 1.5; }
+    .p-label { color: #555; min-width: 72px; flex-shrink: 0; }
+    .p-val { color: #bbb; }
+    #panel hr { border: none; border-top: 1px solid #222; margin: 10px 0; }
+
+    #room-info {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.92);
+      border: 2px solid #333;
+      padding: 14px 28px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      z-index: 10;
+      min-width: 280px;
+      max-width: 520px;
+      text-align: center;
+      display: none;
     }
-    #canvas {
-      flex: 1;
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
+    #room-info.active { display: block; }
+    #ri-name { font-size: 15px; font-weight: bold; margin-bottom: 5px; }
+    #ri-desc { color: #777; font-size: 11px; text-transform: none; margin-bottom: 6px; }
+    #ri-objects { color: #999; font-size: 11px; text-transform: none; line-height: 1.6; }
+
+    #back {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      color: #00FF00;
+      font-size: 12px;
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid #00FF00;
+      padding: 8px 14px;
+      z-index: 10;
+    }
+    #back:hover { background: #00FF00; color: #000; }
+
+    #hint {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      color: #2a2a2a;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      z-index: 10;
     }
   </style>
 </head>
 <body>
-  <div id="container">
-    <div id="ui">
-      <div id="ui-title">[*] NIX'S WORLD</div>
-      <div id="ui-status">
-        <div><span class="label">Location:</span> <span id="status-location">Loading...</span></div>
-        <div><span class="label">Activity:</span> <span id="status-activity">...</span></div>
-        <div><span class="label">Mood:</span> <span id="status-mood">...</span></div>
-        <div><span class="label">Movement:</span> <span id="status-movement">idle</span></div>
-      </div>
-    </div>
-    <canvas id="canvas"></canvas>
+  <div id="panel">
+    <div id="panel-title">[*] Nix's World</div>
+    <div class="p-row"><span class="p-label">Location:</span><span class="p-val" id="s-loc">...</span></div>
+    <div class="p-row"><span class="p-label">Activity:</span><span class="p-val" id="s-act">...</span></div>
+    <div class="p-row"><span class="p-label">Mood:</span><span class="p-val" id="s-mood">...</span></div>
+    <hr>
+    <div class="p-row"><span class="p-label">Moved:</span><span class="p-val" id="s-moved">...</span></div>
   </div>
-  
+
+  <div id="room-info">
+    <div id="ri-name"></div>
+    <div id="ri-desc"></div>
+    <div id="ri-objects"></div>
+  </div>
+
+  <a href="/" id="back">← Dashboard</a>
+  <div id="hint">Click rooms to explore · Click void to reset</div>
+
+  <canvas id="canvas"></canvas>
+
   <script>
-    // === CONFIG ===
-    const TILE_W = 64;
-    const TILE_H = 32;
-    const API_POLL_MS = 10000;
-    const MOVE_INTERVAL = 5000; // Move every 5 seconds
-    
-    // === STATE ===
-    let worldState = null;
-    let canvas = document.getElementById('canvas');
-    let ctx = canvas.getContext('2d');
-    let cameraX = 0;
-    let cameraY = 0;
-    let nixX = 5;
-    let nixY = 5;
-    let targetNixX = 5;
-    let targetNixY = 5;
-    let animFrame = 0;
-    let lastMoveTime = Date.now();
-    
-    // Room layouts - each room has decoration positions
-    const ROOM_LAYOUTS = {
-      hearth: [
-        {type: 'fire', x: 5, y: 3},
-        {type: 'note', x: 3, y: 6},
-        {type: 'warmth', x: 7, y: 6},
-      ],
-      studio: [
-        {type: 'project', x: 2, y: 2},
-        {type: 'project', x: 2, y: 4},
-        {type: 'desk', x: 7, y: 3},
-      ],
-      garden: [
-        {type: 'plant', x: 2, y: 2},
-        {type: 'plant', x: 8, y: 2},
-        {type: 'plant', x: 3, y: 6},
-        {type: 'plant', x: 7, y: 7},
-        {type: 'note', x: 5, y: 8},
-      ],
-      library: [
-        {type: 'book', x: 1, y: 2},
-        {type: 'book', x: 1, y: 3},
-        {type: 'book', x: 1, y: 4},
-        {type: 'book', x: 9, y: 2},
-        {type: 'book', x: 9, y: 3},
-        {type: 'book', x: 9, y: 4},
-      ],
-      observatory: [
-        {type: 'window', x: 5, y: 1},
-        {type: 'telescope', x: 5, y: 4},
-      ],
-      workshop: [
-        {type: 'tool', x: 2, y: 3},
-        {type: 'tool', x: 3, y: 3},
-        {type: 'tool', x: 7, y: 4},
-        {type: 'workbench', x: 5, y: 6},
-      ]
+  (function () {
+    'use strict';
+
+    // -----------------------------------------------------------------------
+    // Config
+    // -----------------------------------------------------------------------
+
+    var RW = 260, RH = 170;
+    var CORRIDOR = 32;
+    var GRID = 26;
+    var WALL = 3;
+    var POLL_MS = 10000;
+
+    var ROOMS = {
+      observatory: { x: 500, y: 80,  name: 'Observatory', floor: '#08081a', accent: '#7755dd', wall: '#2a1a4a' },
+      library:     { x: 160, y: 300, name: 'Library',     floor: '#100c06', accent: '#cc9944', wall: '#3a2a1a' },
+      hearth:      { x: 500, y: 300, name: 'Hearth',      floor: '#140a02', accent: '#ff6b35', wall: '#3a1a0a' },
+      studio:      { x: 840, y: 300, name: 'Studio',      floor: '#06081a', accent: '#4488ff', wall: '#1a2a4a' },
+      garden:      { x: 500, y: 520, name: 'Garden',      floor: '#061206', accent: '#44cc44', wall: '#1a3a1a' },
+      workshop:    { x: 840, y: 520, name: 'Workshop',    floor: '#0c0c0c', accent: '#999999', wall: '#2a2a2a' },
     };
-    
-    // === RESIZE ===
+
+    var CORRIDORS = [
+      ['observatory', 'hearth',   'v'],
+      ['library',     'hearth',   'h'],
+      ['hearth',      'studio',   'h'],
+      ['hearth',      'garden',   'v'],
+      ['garden',      'workshop', 'h'],
+    ];
+
+    var OBJ_LOOK = {
+      ember:     { ch: '*', col: '#FF6B35' },
+      fire:      { ch: '✦', col: '#FF4500' },
+      note:      { ch: '=', col: '#FFDD44' },
+      book:      { ch: '≡', col: '#CC9944' },
+      project:   { ch: '>', col: '#4488FF' },
+      plant:     { ch: '+', col: '#44CC44' },
+      tool:      { ch: '#', col: '#999999' },
+      window:    { ch: '□', col: '#88AAEE' },
+      telescope: { ch: '◎', col: '#9966DD' },
+      desk:      { ch: '▭', col: '#5577AA' },
+      workbench: { ch: '▬', col: '#888888' },
+      warmth:    { ch: '~', col: '#FF8844' },
+    };
+
+    // -----------------------------------------------------------------------
+    // State
+    // -----------------------------------------------------------------------
+
+    var world = null;
+    var canvas = document.getElementById('canvas');
+    var ctx = canvas.getContext('2d');
+    var camX = 0, camY = 0, tCamX = 0, tCamY = 0;
+    var nixX = 500, nixY = 300, tNixX = 500, tNixY = 300;
+    var hovered = null, selected = null;
+    var frame = 0;
+    var parts = [];
+    var lastMove = 0;
+
+    // -----------------------------------------------------------------------
+    // Setup
+    // -----------------------------------------------------------------------
+
     function resize() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      cameraX = canvas.width / 2;
-      cameraY = canvas.height / 2.5;
     }
     window.addEventListener('resize', resize);
     resize();
-    
-    // === ISO HELPERS ===
-    function toScreen(x, y) {
-      return {
-        x: (x - y) * (TILE_W / 2) + cameraX,
-        y: (x + y) * (TILE_H / 2) + cameraY
-      };
+    panTo(500, 300);
+
+    // -----------------------------------------------------------------------
+    // Camera
+    // -----------------------------------------------------------------------
+
+    function panTo(wx, wy) {
+      tCamX = canvas.width / 2 - wx;
+      tCamY = canvas.height / 2 - wy;
     }
-    
-    // === RENDERING ===
-    function drawTile(x, y, color) {
-      const pos = toScreen(x, y);
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(pos.x, pos.y);
-      ctx.lineTo(pos.x + TILE_W/2, pos.y + TILE_H/2);
-      ctx.lineTo(pos.x, pos.y + TILE_H);
-      ctx.lineTo(pos.x - TILE_W/2, pos.y + TILE_H/2);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = '#222';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+
+    function updateCam() {
+      camX += (tCamX - camX) * 0.06;
+      camY += (tCamY - camY) * 0.06;
     }
-    
-    function drawEmber(x, y) {
-      const pos = toScreen(x, y);
-      const bobble = Math.sin(animFrame * 0.05) * 3;
-      const flicker = Math.sin(animFrame * 0.1) * 2;
-      
-      // Glow
-      const grd = ctx.createRadialGradient(pos.x, pos.y - 30 + bobble, 0, pos.x, pos.y - 30 + bobble, 50 + flicker);
-      grd.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
-      grd.addColorStop(0.5, 'rgba(255, 50, 0, 0.3)');
-      grd.addColorStop(1, 'rgba(255, 0, 0, 0)');
-      ctx.fillStyle = grd;
-      ctx.fillRect(pos.x - 70, pos.y - 100, 140, 140);
-      
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    function rr(key) {
+      var r = ROOMS[key];
+      return { x: r.x - RW / 2, y: r.y - RH / 2, w: RW, h: RH };
+    }
+
+    function isCurrent(key) {
+      return world && world.current_location === key;
+    }
+
+    // -----------------------------------------------------------------------
+    // Rendering
+    // -----------------------------------------------------------------------
+
+    function drawGlows() {
+      for (var key in ROOMS) {
+        var r = ROOMS[key];
+        var radius = isCurrent(key) ? RW * 1.1 : RW * 0.7;
+        var alpha = isCurrent(key) ? 0.18 : 0.06;
+        var grd = ctx.createRadialGradient(
+          r.x + camX, r.y + camY, 20,
+          r.x + camX, r.y + camY, radius
+        );
+        grd.addColorStop(0, r.accent.replace(')', ',' + alpha + ')').replace('rgb', 'rgba').replace('#', ''));
+
+        // hex to rgba
+        var hex = r.accent;
+        var rr2 = parseInt(hex.slice(1, 3), 16);
+        var gg = parseInt(hex.slice(3, 5), 16);
+        var bb = parseInt(hex.slice(5, 7), 16);
+        grd = ctx.createRadialGradient(
+          r.x + camX, r.y + camY, 10,
+          r.x + camX, r.y + camY, radius
+        );
+        grd.addColorStop(0, 'rgba(' + rr2 + ',' + gg + ',' + bb + ',' + alpha + ')');
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(r.x + camX - radius, r.y + camY - radius, radius * 2, radius * 2);
+      }
+    }
+
+    function drawCorridors() {
+      ctx.fillStyle = '#080808';
+      CORRIDORS.forEach(function (c) {
+        var a = ROOMS[c[0]], b = ROOMS[c[1]];
+        if (c[2] === 'h') {
+          var sx = Math.min(a.x, b.x) + RW / 2;
+          var ex = Math.max(a.x, b.x) - RW / 2;
+          var cy2 = (a.y + b.y) / 2 - CORRIDOR / 2;
+          ctx.fillRect(sx + camX, cy2 + camY, ex - sx, CORRIDOR);
+        } else {
+          var sy = Math.min(a.y, b.y) + RH / 2;
+          var ey = Math.max(a.y, b.y) - RH / 2;
+          var cx2 = (a.x + b.x) / 2 - CORRIDOR / 2;
+          ctx.fillRect(cx2 + camX, sy + camY, CORRIDOR, ey - sy);
+        }
+      });
+    }
+
+    function drawRooms() {
+      for (var key in ROOMS) {
+        var r = ROOMS[key];
+        var b = rr(key);
+        var sx = b.x + camX, sy = b.y + camY;
+        var cur = isCurrent(key);
+        var hov = hovered === key;
+        var sel = selected === key;
+
+        // Floor
+        ctx.fillStyle = r.floor;
+        ctx.fillRect(sx, sy, b.w, b.h);
+
+        // Subtle grid
+        ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+        ctx.lineWidth = 1;
+        for (var gx = GRID; gx < b.w; gx += GRID) {
+          ctx.beginPath(); ctx.moveTo(sx + gx, sy); ctx.lineTo(sx + gx, sy + b.h); ctx.stroke();
+        }
+        for (var gy = GRID; gy < b.h; gy += GRID) {
+          ctx.beginPath(); ctx.moveTo(sx, sy + gy); ctx.lineTo(sx + b.w, sy + gy); ctx.stroke();
+        }
+
+        // Walls
+        ctx.strokeStyle = sel || cur ? r.accent : hov ? '#444' : r.wall;
+        ctx.lineWidth = WALL;
+        ctx.strokeRect(sx, sy, b.w, b.h);
+
+        // Label
+        ctx.font = 'bold 11px Courier New';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = cur ? r.accent : '#3a3a3a';
+        ctx.fillText(r.name.toUpperCase(), r.x + camX, sy - 10);
+
+        if (cur) {
+          ctx.fillStyle = r.accent;
+          ctx.font = '9px Courier New';
+          ctx.fillText('\u25C6 NIX IS HERE', r.x + camX, sy - 22);
+        }
+      }
+    }
+
+    function drawObjects() {
+      if (!world) return;
+
+      for (var key in ROOMS) {
+        var room = world.rooms && world.rooms[key];
+        if (!room || !room.objects) continue;
+
+        var b = rr(key);
+        var objs = room.objects;
+        var cols = Math.min(objs.length, 5);
+        var rows = Math.ceil(objs.length / cols);
+        var padX = 36, padY = 36;
+        var spacingX = cols > 1 ? (b.w - padX * 2) / (cols - 1) : 0;
+        var spacingY = rows > 1 ? Math.min(28, (b.h - padY * 2) / (rows - 1)) : 0;
+        var startY = b.y + padY + (b.h - padY * 2 - (rows - 1) * spacingY) / 2;
+
+        objs.forEach(function (obj, i) {
+          var col = i % cols;
+          var row = Math.floor(i / cols);
+          var ox = b.x + padX + col * spacingX + camX;
+          var oy = startY + row * spacingY + camY;
+          var look = OBJ_LOOK[obj.type] || OBJ_LOOK.note;
+
+          // Glow
+          var hex = look.col;
+          var cr = parseInt(hex.slice(1, 3), 16);
+          var cg = parseInt(hex.slice(3, 5), 16);
+          var cb = parseInt(hex.slice(5, 7), 16);
+          var grd = ctx.createRadialGradient(ox, oy, 0, ox, oy, 18);
+          grd.addColorStop(0, 'rgba(' + cr + ',' + cg + ',' + cb + ',0.35)');
+          grd.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = grd;
+          ctx.fillRect(ox - 18, oy - 18, 36, 36);
+
+          // Icon
+          ctx.font = 'bold 13px Courier New';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = look.col;
+          ctx.fillText('[' + look.ch + ']', ox, oy + 4);
+        });
+      }
+    }
+
+    function drawEmber() {
+      if (!world) return;
+      var r = ROOMS[world.current_location];
+      if (!r) return;
+
+      nixX += (tNixX - nixX) * 0.035;
+      nixY += (tNixY - nixY) * 0.035;
+
+      var ex = nixX + camX;
+      var ey = nixY + camY;
+      var bob = Math.sin(frame * 0.04) * 4;
+      var flk = Math.sin(frame * 0.09) * 2;
+
+      // Outer glow
+      var g1 = ctx.createRadialGradient(ex, ey + bob, 0, ex, ey + bob, 90 + flk);
+      g1.addColorStop(0, 'rgba(255,107,53,0.30)');
+      g1.addColorStop(0.5, 'rgba(255,50,0,0.08)');
+      g1.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g1;
+      ctx.beginPath(); ctx.arc(ex, ey + bob, 90 + flk, 0, Math.PI * 2); ctx.fill();
+
+      // Inner glow
+      var g2 = ctx.createRadialGradient(ex, ey + bob, 0, ex, ey + bob, 28);
+      g2.addColorStop(0, 'rgba(255,160,60,0.9)');
+      g2.addColorStop(1, 'rgba(255,80,0,0)');
+      ctx.fillStyle = g2;
+      ctx.beginPath(); ctx.arc(ex, ey + bob, 28, 0, Math.PI * 2); ctx.fill();
+
       // Core
       ctx.fillStyle = '#FF6B35';
-      ctx.beginPath();
-      ctx.arc(pos.x, pos.y - 30 + bobble + flicker, 14, 0, Math.PI * 2);
-      ctx.fill();
-      
+      ctx.beginPath(); ctx.arc(ex, ey + bob + flk, 9, 0, Math.PI * 2); ctx.fill();
+
       // Bright center
       ctx.fillStyle = '#FFF';
-      ctx.beginPath();
-      ctx.arc(pos.x - 3, pos.y - 33 + bobble + flicker, 5, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Sparks
-      for (let i = 0; i < 3; i++) {
-        if (Math.random() > 0.8) {
-          const sparkX = pos.x + (Math.random() - 0.5) * 20;
-          const sparkY = pos.y - 30 + bobble + (Math.random() - 0.5) * 20;
-          ctx.fillStyle = Math.random() > 0.5 ? '#FF6B35' : '#FFA500';
-          ctx.fillRect(sparkX, sparkY, 2, 2);
-        }
-      }
-      
-      // Trail when moving
-      const isMoving = Math.abs(x - targetNixX) > 0.1 || Math.abs(y - targetNixY) > 0.1;
-      if (isMoving) {
-        ctx.fillStyle = 'rgba(255, 107, 53, 0.2)';
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y - 20, 8, 0, Math.PI * 2);
-        ctx.fill();
+      ctx.beginPath(); ctx.arc(ex - 2, ey - 3 + bob + flk, 3.5, 0, Math.PI * 2); ctx.fill();
+
+      // Ember sparks
+      if (Math.random() > 0.6) {
+        parts.push({
+          x: nixX + (Math.random() - 0.5) * 8,
+          y: nixY + bob - 5,
+          vx: (Math.random() - 0.5) * 0.6,
+          vy: -Math.random() * 1.2 - 0.4,
+          life: 35 + Math.random() * 35, max: 70,
+          col: Math.random() > 0.5 ? '#FF6B35' : '#FFA500',
+          sz: 1.2 + Math.random() * 1.8,
+        });
       }
     }
-    
-    function drawObject(x, y, obj) {
-      const pos = toScreen(x, y);
-      const height = 15;
-      
-      // Base
-      ctx.fillStyle = '#1a1a1a';
-      ctx.fillRect(pos.x - 8, pos.y + height, 16, 4);
-      
-      // Icon
-      ctx.fillStyle = '#00FF00';
-      ctx.font = 'bold 16px Courier New';
-      ctx.textAlign = 'center';
-      
-      let icon = '?';
-      if (obj.type === 'book') icon = '≡';
-      else if (obj.type === 'plant') icon = '+';
-      else if (obj.type === 'project') icon = '>';
-      else if (obj.type === 'tool') icon = '#';
-      else if (obj.type === 'window') icon = '□';
-      else if (obj.type === 'note') icon = '=';
-      else if (obj.type === 'fire') icon = '✦';
-      else if (obj.type === 'desk') icon = '▭';
-      else if (obj.type === 'telescope') icon = '◎';
-      else if (obj.type === 'workbench') icon = '▬';
-      else if (obj.type === 'warmth') icon = '~';
-      
-      ctx.fillText(`[${icon}]`, pos.x, pos.y - height);
-      
-      // Glow for special objects
-      if (obj.type === 'fire') {
-        const fireGlow = Math.sin(animFrame * 0.15) * 0.3 + 0.7;
-        ctx.fillStyle = `rgba(255, 100, 0, ${fireGlow * 0.3})`;
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y - height, 20, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    
-    function drawRoom() {
-      if (!worldState) return;
-      
-      const room = worldState.rooms[worldState.current_location];
-      if (!room) return;
-      
-      // Draw floor tiles
-      for (let y = 0; y < 12; y++) {
-        for (let x = 0; x < 12; x++) {
-          let color;
-          if (x === 0 || x === 11 || y === 0 || y === 11) {
-            color = '#0a0a0a'; // Border
-          } else {
-            color = ((x + y) % 2 === 0) ? '#1a1a1a' : '#151515';
-          }
-          drawTile(x, y, color);
+
+    function doParticles() {
+      // Ambient room particles
+      if (world && Math.random() > 0.88) {
+        for (var key in ROOMS) {
+          if (Math.random() > 0.4) continue;
+          var b = rr(key);
+          var cur = isCurrent(key);
+          var col, sz;
+
+          if (key === 'hearth' && cur)       { col = 'rgba(255,107,53,0.35)'; sz = 1.8; }
+          else if (key === 'hearth')         { col = 'rgba(255,107,53,0.15)'; sz = 1; }
+          else if (key === 'garden')         { col = 'rgba(68,204,68,0.25)'; sz = 1.2; }
+          else if (key === 'observatory')    { col = 'rgba(119,85,221,0.35)'; sz = 0.8; }
+          else if (key === 'library')        { col = 'rgba(204,153,68,0.15)'; sz = 0.8; }
+          else if (key === 'studio' && cur)  { col = 'rgba(68,136,255,0.25)'; sz = 1; }
+          else if (key === 'workshop' && cur){ col = 'rgba(170,170,170,0.15)'; sz = 1; }
+          else continue;
+
+          parts.push({
+            x: b.x + 10 + Math.random() * (b.w - 20),
+            y: b.y + 10 + Math.random() * (b.h - 20),
+            vx: (Math.random() - 0.5) * 0.25,
+            vy: (Math.random() - 0.5) * 0.25 - 0.15,
+            life: 60 + Math.random() * 80, max: 140,
+            col: col, sz: sz,
+          });
         }
       }
-      
-      // Draw room-specific objects
-      const layout = ROOM_LAYOUTS[worldState.current_location] || [];
-      layout.forEach(obj => {
-        drawObject(obj.x, obj.y, obj);
+
+      parts = parts.filter(function (p) {
+        p.x += p.vx; p.y += p.vy; p.life--;
+        if (p.life <= 0) return false;
+        ctx.globalAlpha = p.life / p.max;
+        ctx.fillStyle = p.col;
+        ctx.fillRect(p.x + camX, p.y + camY, p.sz, p.sz);
+        return true;
       });
-      
-      // Draw me (ember)
-      drawEmber(nixX, nixY);
-      
-      // Room label
-      ctx.fillStyle = '#00FF00';
-      ctx.font = 'bold 20px Courier New';
-      ctx.textAlign = 'center';
-      ctx.fillText(`[${room.name.toUpperCase()}]`, canvas.width / 2, 50);
-      
-      // Vibe text
-      ctx.fillStyle = '#666';
-      ctx.font = '12px Courier New';
-      ctx.fillText(room.description, canvas.width / 2, 75);
+      ctx.globalAlpha = 1;
     }
-    
-    // === MOVEMENT ===
-    function autonomousMove() {
-      const now = Date.now();
-      if (now - lastMoveTime > MOVE_INTERVAL) {
-        // Move to a random spot in the room
-        targetNixX = 2 + Math.floor(Math.random() * 7);
-        targetNixY = 2 + Math.floor(Math.random() * 7);
-        lastMoveTime = now;
-        
-        document.getElementById('status-movement').textContent = 'wandering';
+
+    // -----------------------------------------------------------------------
+    // Nix movement
+    // -----------------------------------------------------------------------
+
+    function wander() {
+      if (!world) return;
+      var now = Date.now();
+      if (now - lastMove < 3500 + Math.random() * 4000) return;
+
+      var b = rr(world.current_location);
+      tNixX = b.x + 50 + Math.random() * (b.w - 100);
+      tNixY = b.y + 40 + Math.random() * (b.h - 80);
+      lastMove = now;
+    }
+
+    function placeNix() {
+      if (!world) return;
+      var r = ROOMS[world.current_location];
+      if (!r) return;
+      nixX = tNixX = r.x;
+      nixY = tNixY = r.y;
+    }
+
+    // -----------------------------------------------------------------------
+    // Interaction
+    // -----------------------------------------------------------------------
+
+    function hitRoom(mx, my) {
+      for (var key in ROOMS) {
+        var b = rr(key);
+        if (mx >= b.x + camX && mx <= b.x + b.w + camX &&
+            my >= b.y + camY && my <= b.y + b.h + camY) return key;
       }
+      return null;
     }
-    
-    // === ANIMATION ===
-    function animate() {
-      // Smooth movement
-      const moveSpeed = 0.05;
-      const dx = targetNixX - nixX;
-      const dy = targetNixY - nixY;
-      
-      if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
-        nixX += dx * moveSpeed;
-        nixY += dy * moveSpeed;
+
+    canvas.addEventListener('mousemove', function (e) {
+      hovered = hitRoom(e.clientX, e.clientY);
+      canvas.style.cursor = hovered ? 'pointer' : 'default';
+    });
+
+    canvas.addEventListener('click', function (e) {
+      var hit = hitRoom(e.clientX, e.clientY);
+      if (hit) {
+        selected = selected === hit ? null : hit;
+        panTo(ROOMS[hit].x, ROOMS[hit].y);
+        showDetail(hit);
       } else {
-        // Arrived at target
-        if (document.getElementById('status-movement').textContent !== 'idle') {
-          document.getElementById('status-movement').textContent = 'idle';
-        }
+        selected = null;
+        hideDetail();
+        var target = world ? ROOMS[world.current_location] : null;
+        panTo(target ? target.x : 500, target ? target.y : 300);
       }
-      
-      // Clear
+    });
+
+    function showDetail(key) {
+      var el = document.getElementById('room-info');
+      if (!world || !world.rooms || !world.rooms[key]) { el.classList.remove('active'); return; }
+
+      var room = world.rooms[key];
+      var objs = room.objects || [];
+      var cur = isCurrent(key);
+
+      document.getElementById('ri-name').textContent = room.name + (cur ? ' \u25C6' : '');
+      document.getElementById('ri-name').style.color = ROOMS[key].accent;
+      document.getElementById('ri-desc').textContent = room.description || '';
+
+      if (objs.length) {
+        document.getElementById('ri-objects').textContent = objs.map(function (o) {
+          var look = OBJ_LOOK[o.type] || {};
+          var name = o.name || o.title || o.content || o.state || o.type;
+          return '[' + (look.ch || '?') + '] ' + name;
+        }).join('  \u00B7  ');
+      } else {
+        document.getElementById('ri-objects').textContent = 'Empty room';
+      }
+
+      el.classList.add('active');
+    }
+
+    function hideDetail() {
+      document.getElementById('room-info').classList.remove('active');
+    }
+
+    // -----------------------------------------------------------------------
+    // API
+    // -----------------------------------------------------------------------
+
+    function loadWorld() {
+      fetch('/api/my-world')
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+        .then(function (data) {
+          var changed = world && world.current_location !== data.current_location;
+          world = data;
+
+          document.getElementById('s-loc').textContent = data.current_location || '...';
+          document.getElementById('s-act').textContent = data.activity || '...';
+          document.getElementById('s-mood').textContent = data.mood || '...';
+
+          if (data.last_moved) {
+            var m = Math.floor((Date.now() - new Date(data.last_moved)) / 60000);
+            document.getElementById('s-moved').textContent =
+              m < 1 ? 'just now' : m < 60 ? m + 'm ago' : Math.floor(m / 60) + 'h ago';
+          }
+
+          if (!nixX || changed) {
+            placeNix();
+            var r = ROOMS[data.current_location];
+            if (r) panTo(r.x, r.y);
+          }
+
+          if (selected) showDetail(selected);
+        })
+        .catch(function () {
+          document.getElementById('s-loc').textContent = 'offline';
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Main loop
+    // -----------------------------------------------------------------------
+
+    function loop() {
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Render
-      drawRoom();
-      
-      // Autonomous movement
-      autonomousMove();
-      
-      animFrame++;
-      requestAnimationFrame(animate);
+
+      updateCam();
+      drawGlows();
+      drawCorridors();
+      drawRooms();
+      drawObjects();
+      wander();
+      drawEmber();
+      doParticles();
+
+      frame++;
+      requestAnimationFrame(loop);
     }
-    
-    // === API ===
-    async function loadWorld() {
-      try {
-        const response = await fetch('/api/my-world');
-        const newState = await response.json();
-        
-        // Update UI
-        document.getElementById('status-location').textContent = newState.current_location;
-        document.getElementById('status-activity').textContent = newState.activity;
-        document.getElementById('status-mood').textContent = newState.mood;
-        
-        // Room change animation
-        if (worldState && worldState.current_location !== newState.current_location) {
-          // Reset position for new room
-          nixX = 5;
-          nixY = 5;
-          targetNixX = 5 + Math.random() * 2 - 1;
-          targetNixY = 5 + Math.random() * 2 - 1;
-        }
-        
-        worldState = newState;
-      } catch (error) {
-        console.error('Error loading world:', error);
-      }
-    }
-    
-    // === INIT ===
+
+    panTo(500, 300);
     loadWorld();
-    setInterval(loadWorld, API_POLL_MS);
-    animate();
-    
-    // Nix's World - Isometric Edition
+    setInterval(loadWorld, POLL_MS);
+    loop();
+  })();
   </script>
 </body>
 </html>
