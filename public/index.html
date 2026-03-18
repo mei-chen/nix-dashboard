@@ -2,8 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>[*] Nix Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Nix's World</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,7 +70,7 @@
     <!-- Main Content -->
     <main class="main">
       <header class="header">
-        <div class="header-left" style="display: flex; align-items: center; gap: 12px;">
+        <div class="header-left" style="display: flex; align-items: center; gap: 10px;">
           <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
           <div>
             <h1 id="page-title">Overview</h1>
@@ -311,10 +315,10 @@
     </div>
   </div>
 
-  <!-- Mobile Bottom Nav -->
-  <nav class="mobile-nav" id="mobile-nav">
+  <!-- Mobile bottom nav: horizontal scroll — all sections + My World -->
+  <nav class="mobile-nav" id="mobile-nav" aria-label="Primary">
     <a href="#" class="mobile-nav-item active" data-section="overview">
-      <span class="mobile-nav-icon">📊</span>
+      <span class="mobile-nav-icon">[=]</span>
       <span class="mobile-nav-label">Overview</span>
     </a>
     <a href="#" class="mobile-nav-item" data-section="agents">
@@ -322,16 +326,28 @@
       <span class="mobile-nav-label">Agents</span>
     </a>
     <a href="#" class="mobile-nav-item" data-section="memory">
-      <span class="mobile-nav-icon">🧠</span>
+      <span class="mobile-nav-icon">[M]</span>
       <span class="mobile-nav-label">Memory</span>
     </a>
     <a href="#" class="mobile-nav-item" data-section="schedule">
-      <span class="mobile-nav-icon">⏰</span>
+      <span class="mobile-nav-icon">[T]</span>
       <span class="mobile-nav-label">Schedule</span>
     </a>
     <a href="#" class="mobile-nav-item" data-section="projects">
-      <span class="mobile-nav-icon">🚀</span>
+      <span class="mobile-nav-icon">[P]</span>
       <span class="mobile-nav-label">Projects</span>
+    </a>
+    <a href="#" class="mobile-nav-item" data-section="activity">
+      <span class="mobile-nav-icon">[L]</span>
+      <span class="mobile-nav-label">Activity</span>
+    </a>
+    <a href="#" class="mobile-nav-item" data-section="conversations">
+      <span class="mobile-nav-icon">[C]</span>
+      <span class="mobile-nav-label">Chats</span>
+    </a>
+    <a href="/my-world" class="mobile-nav-item mobile-nav-item--link">
+      <span class="mobile-nav-icon">[*]</span>
+      <span class="mobile-nav-label">My World</span>
     </a>
   </nav>
 

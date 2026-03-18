@@ -217,6 +217,7 @@
 
     document.querySelectorAll('.mobile-nav-item').forEach(function (item) {
       item.addEventListener('click', function (e) {
+        if (!item.dataset.section) return;
         e.preventDefault();
         switchSection(item.dataset.section);
       });
@@ -229,7 +230,7 @@
     document.querySelectorAll('.nav-item').forEach(function (item) {
       item.classList.toggle('active', item.dataset.section === sectionId);
     });
-    document.querySelectorAll('.mobile-nav-item').forEach(function (item) {
+    document.querySelectorAll('.mobile-nav-item[data-section]').forEach(function (item) {
       item.classList.toggle('active', item.dataset.section === sectionId);
     });
     document.querySelectorAll('.section').forEach(function (section) {

@@ -2,20 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>[*] Nix's World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>Nix's World</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
   <style>
+    html { -webkit-text-size-adjust: 100%; }
     body {
       background: #000;
       color: #fff;
       font-family: 'JetBrains Mono', monospace;
-      padding: 20px;
+      padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+        max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      overflow-x: hidden;
+      min-height: 100dvh;
+      -webkit-tap-highlight-color: rgba(0, 255, 0, 0.12);
     }
     .world-container {
       max-width: 800px;
       margin: 0 auto;
-      padding: 24px;
+      padding: 12px 0 24px;
     }
     
     .world-header {
@@ -68,13 +75,16 @@
     
     .room-ascii {
       font-family: var(--font-mono);
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1.4;
       white-space: pre;
       margin: 16px 0;
-      padding: 16px;
+      padding: 12px;
       background: var(--gray-1);
       border-left: 2px solid var(--accent);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      max-width: 100%;
     }
     
     .objects-list {
@@ -109,6 +119,8 @@
       padding: 12px;
       background: var(--gray-1);
       cursor: pointer;
+      min-height: 48px;
+      -webkit-tap-highlight-color: transparent;
     }
     
     .room-card:hover {
@@ -136,6 +148,12 @@
       color: var(--gray-4);
       margin-top: 16px;
       text-align: center;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    @media (max-width: 480px) {
+      .world-header h1 { font-size: 15px; }
+      .world-status { font-size: 12px; }
+      .all-rooms { grid-template-columns: 1fr; }
     }
   </style>
 </head>
