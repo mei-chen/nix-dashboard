@@ -11,16 +11,15 @@
 </head>
 <body>
   <div class="app">
-    <!-- Mobile Sidebar Backdrop -->
     <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar()"></div>
-    
+
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="logo">
         <span class="logo-icon">[*]</span>
         <span class="logo-text">Nix</span>
       </div>
-      
+
       <nav class="nav">
         <a href="#" class="nav-item active" data-section="overview">
           <span class="nav-icon">[=]</span>
@@ -55,7 +54,7 @@
           <span>My World</span>
         </a>
       </nav>
-      
+
       <div class="sidebar-footer">
         <div class="status-badge" id="connection-status">
           <span class="status-dot"></span>
@@ -71,7 +70,7 @@
           <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
           <div>
             <h1 id="page-title">Overview</h1>
-          <span class="last-update">Updated <span id="last-update">just now</span></span>
+            <span class="last-update">Updated <span id="last-update">just now</span></span>
           </div>
         </div>
         <div class="header-right">
@@ -81,7 +80,7 @@
         </div>
       </header>
 
-      <!-- Overview Section -->
+      <!-- Overview -->
       <section id="section-overview" class="section active">
         <div class="stats-grid">
           <div class="stat-card">
@@ -147,18 +146,13 @@
 
         <div class="grid-2">
           <div class="card">
-            <div class="card-header">
-              <h3>[>] Active Agents</h3>
-            </div>
+            <div class="card-header"><h3>[>] Active Agents</h3></div>
             <div class="card-body" id="overview-agents">
               <div class="empty-state">Loading...</div>
             </div>
           </div>
-
           <div class="card">
-            <div class="card-header">
-              <h3>⏰ Upcoming Tasks</h3>
-            </div>
+            <div class="card-header"><h3>⏰ Upcoming Tasks</h3></div>
             <div class="card-body" id="overview-cron">
               <div class="empty-state">Loading...</div>
             </div>
@@ -166,48 +160,38 @@
         </div>
 
         <div class="card">
-          <div class="card-header">
-            <h3>[L] Recent Activity</h3>
-          </div>
+          <div class="card-header"><h3>[L] Recent Activity</h3></div>
           <div class="card-body" id="overview-activity">
             <div class="empty-state">Loading...</div>
           </div>
         </div>
       </section>
 
-      <!-- Agents Section -->
+      <!-- Agents -->
       <section id="section-agents" class="section">
         <div class="grid-2">
           <div class="card">
-            <div class="card-header">
-              <h3>🧠 Main Agent</h3>
-            </div>
+            <div class="card-header"><h3>🧠 Main Agent</h3></div>
             <div class="card-body" id="agent-main">
               <div class="empty-state">Loading...</div>
             </div>
           </div>
-          
           <div class="card">
-            <div class="card-header">
-              <h3>⚡ Sub-Agents</h3>
-            </div>
+            <div class="card-header"><h3>⚡ Sub-Agents</h3></div>
             <div class="card-body" id="agent-subagents">
               <div class="empty-state">No active sub-agents</div>
             </div>
           </div>
         </div>
-        
         <div class="card">
-          <div class="card-header">
-            <h3>⏰ Cron Tasks (Recent Runs)</h3>
-          </div>
+          <div class="card-header"><h3>⏰ Cron Tasks (Recent Runs)</h3></div>
           <div class="card-body" id="agent-cron-runs">
             <div class="empty-state">Loading...</div>
           </div>
         </div>
       </section>
 
-      <!-- Memory Section -->
+      <!-- Memory -->
       <section id="section-memory" class="section">
         <div class="card">
           <div class="card-header">
@@ -223,18 +207,13 @@
 
         <div class="grid-2">
           <div class="card">
-            <div class="card-header">
-              <h3>🔮 Soul & Identity</h3>
-            </div>
+            <div class="card-header"><h3>🔮 Soul & Identity</h3></div>
             <div class="card-body" id="memory-soul">
               <div class="empty-state">Loading...</div>
             </div>
           </div>
-
           <div class="card">
-            <div class="card-header">
-              <h3>⚙️ System Info</h3>
-            </div>
+            <div class="card-header"><h3>⚙️ System Info</h3></div>
             <div class="card-body" id="memory-system">
               <div class="empty-state">Loading...</div>
             </div>
@@ -242,89 +221,77 @@
         </div>
       </section>
 
-      <!-- Schedule Section -->
+      <!-- Schedule -->
       <section id="section-schedule" class="section">
         <div class="card">
-          <div class="card-header">
-            <h3>⏰ Scheduled Tasks</h3>
-          </div>
+          <div class="card-header"><h3>⏰ Scheduled Tasks</h3></div>
           <div class="card-body" id="schedule-list">
             <div class="empty-state">Loading...</div>
           </div>
         </div>
       </section>
 
-      <!-- Projects Section -->
+      <!-- Projects -->
       <section id="section-projects" class="section">
         <div class="card">
-          <div class="card-header">
-            <h3>[!] Ideas</h3>
-          </div>
+          <div class="card-header"><h3>[!] Ideas</h3></div>
           <div class="card-body" id="projects-ideas">
             <div class="empty-state">Loading...</div>
           </div>
         </div>
-        
         <div class="card">
-          <div class="card-header">
-            <h3>[S] Needs Review</h3>
-          </div>
+          <div class="card-header"><h3>[S] Needs Review</h3></div>
           <div class="card-body" id="projects-review">
             <div class="empty-state">Loading...</div>
           </div>
         </div>
-        
         <div class="card">
-          <div class="card-header">
-            <h3>[+] Active Projects</h3>
-          </div>
+          <div class="card-header"><h3>[+] Active Projects</h3></div>
           <div class="card-body" id="projects-active">
             <div class="empty-state">Loading...</div>
           </div>
         </div>
       </section>
 
-      <!-- Activity Section -->
+      <!-- Activity -->
       <section id="section-activity" class="section">
         <div class="card">
-          <div class="card-header">
-            <h3>[L] Git Activity</h3>
-          </div>
+          <div class="card-header"><h3>[L] Git Activity</h3></div>
           <div class="card-body" id="activity-list">
             <div class="empty-state">Loading...</div>
           </div>
         </div>
       </section>
 
-      <!-- Conversations Section -->
+      <!-- Conversations -->
       <section id="section-conversations" class="section">
-        <div style="padding: 12px 20px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
-          <div style="display: flex; gap: 8px; align-items: center; font-size: 13px; color: #6c757d;">
+        <div class="conv-toolbar">
+          <div class="conv-stats">
             <span>💬 <strong id="conv-total">-</strong></span>
             <span>·</span>
             <span>👤 <strong id="conv-user">-</strong></span>
             <span>[>] <strong id="conv-assistant">-</strong></span>
             <span>🔧 <strong id="conv-tools">-</strong></span>
           </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <select id="conv-channel-filter" onchange="loadConversations()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #dee2e6; font-size: 13px;">
+          <div class="conv-controls">
+            <select id="conv-channel-filter" onchange="loadConversations()">
               <option value="all">All Channels</option>
               <option value="signal" selected>Signal</option>
               <option value="telegram">Telegram</option>
             </select>
-            <select id="conv-limit-filter" onchange="loadConversations()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #dee2e6; font-size: 13px;">
+            <select id="conv-limit-filter" onchange="loadConversations()">
               <option value="50">50</option>
               <option value="100" selected>100</option>
               <option value="200">200</option>
               <option value="500">500</option>
               <option value="1000">All</option>
             </select>
-            <button class="btn" onclick="loadConversations()" style="padding: 6px 12px; font-size: 13px;">[R]</button>
+            <button class="btn" onclick="loadConversations()">[R]</button>
           </div>
         </div>
 
-        <div style="background: white; border-radius: 8px; padding: 20px; max-height: calc(100vh - 200px); overflow-y: auto;" id="conversations-list">
-          <div class="empty-state">Loading conversations...</div>
+        <div class="conv-container" id="conversations-list">
+          <div class="empty-state">Select a channel and click refresh</div>
         </div>
       </section>
     </main>

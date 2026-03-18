@@ -175,12 +175,9 @@
     let worldState = null;
     
     async function loadWorld() {
-      console.log('Loading world...');
       try {
         const response = await fetch('/api/my-world');
-        console.log('Response status:', response.status);
         worldState = await response.json();
-        console.log('World state loaded:', worldState);
         renderWorld();
       } catch (error) {
         console.error('Error loading world:', error);
@@ -315,9 +312,7 @@
     }
     
     function viewRoom(roomKey) {
-      // For now, just reload with that room as current
-      // Later: could navigate without changing actual state
-      console.log('View room:', roomKey);
+      // Future: navigate without changing actual state
     }
     
     // Auto-refresh every 30 seconds
