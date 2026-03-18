@@ -207,6 +207,7 @@
 
   function setupNavigation() {
     document.querySelectorAll('.nav-item').forEach(function (item) {
+      if (!item.dataset.section) return;
       item.addEventListener('click', function (e) {
         e.preventDefault();
         switchSection(item.dataset.section);
